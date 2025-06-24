@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciativa RPG</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3f51b5" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js")
+          .then(() => console.log("Service Worker registrado"))
+          .catch(error => console.log("Error al registrar Service Worker:", error));
+      });
+    }
+  </script>
+</head>
+<body>
+  <h1>Iniciativa RPG App</h1>
+  <p>Esta es una versión demo. Inserta aquí tu app principal.</p>
+</body>
+</html>
