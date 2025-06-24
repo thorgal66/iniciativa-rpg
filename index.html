@@ -4,21 +4,249 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iniciativa RPG</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#3f51b5" />
-  <link rel="icon" href="icons/icon-192.png" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      max-width: 1200px;
+      margin: auto;
+      background: #f0f4f8;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    label {
+      font-weight: bold;
+    }
+    input, select, button {
+      margin-top: 4px;
+      margin-bottom: 12px;
+      padding: 6px;
+      width: 100%;
+    }
+    .container {
+      display: flex;
+      gap: 2rem;
+    }
+    .form-section {
+      flex: 1;
+    }
+    .characters-section {
+      flex: 2;
+    }
+    .character-card {
+      border: 2px solid #ccc;
+      border-left-width: 10px;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      background: white;
+    }
+    .enemy { border-left-color: red; }
+    .ally { border-left-color: green; }
+    .player { border-left-color: blue; }
+    .active { background-color: #fff8c5; }
+    .hp-bar {
+      height: 10px;
+      background: #ccc;
+      margin-top: 4px;
+    }
+    .hp-fill {
+      height: 100%;
+      background: #4caf50;
+    }
+    .compact-row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .status-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .button-group button {
+      margin-right: 8px;
+    }
+    .small-delete {
+      font-size: 0.8rem;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏝️ Iniciativa RPG</h1>
+  <div class="container">
+    <div class="form-section">
+      <label for="diceType">Tipo de dado para iniciativa</label>
+      <select id="diceType">
+        <option value="20">D20</option>
+        <option value="100">D100</option>
+      </select>
+
+      <label>Nombre</label>
+      <input type="text" id="name" />
+
+      <label>Tipo</label>
+      <select id="type">
+        <option value="player">Jugador</option>
+        <option value="ally">Aliado</option>
+        <option value="enemy">Enemigo</option>
+      </select>
+
+      <label>HP máximo</label>
+      <input type="number" id="maxHp" />
+
+      <label>CA</label>
+      <input type="number" id="ac" />
+
+      <label>Bono de iniciativa</label>
+      <input type="number" id="initiativeBonus" />
+
+      <button onclick="addCharacter()">Añadir personaje</button>
+
+      <div class="button-group">
+        <button onclick="nextTurn()">➡️ Siguiente personaje</button>
+        <button onclick="rollInitiative()">🎲 Tirar iniciativa</button>
+        <button onclick="resetCombat()">🔁 Reiniciar combate</button>
+      </div>
+    </div>
+
+    <div class="characters-section">
+      <div id="turnInfo"></div>
+      <div id="characters"></div>
+    </div>
+  </div>
+
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("service-worker.js")
-          .then(() => console.log("Service Worker registrado"))
-          .catch(error => console.log("Error al registrar Service Worker:", error));
+    const STATUS_EFFECTS = [
+      "aturdido", "herido", "envenenado", "cegado",
+      "caído", "inconsciente", "ralentizado", "acelerado", "desorientado"
+    ];
+
+    let characters = [];
+    let currentTurnIndex = 0;
+    let turnCount = 0;
+
+    function getValue(id) {
+      return document.getElementById(id).value;
+    }
+
+    function addCharacter() {
+      const char = {
+        name: getValue('name'),
+        type: getValue('type'),
+        maxHp: parseInt(getValue('maxHp')),
+        currentHp: parseInt(getValue('maxHp')),
+        ac: parseInt(getValue('ac')),
+        initiativeBonus: parseInt(getValue('initiativeBonus')),
+        initiative: null,
+        status: []
+      };
+      characters.push(char);
+      render();
+    }
+
+    function removeCharacter(index) {
+      characters.splice(index, 1);
+      if (currentTurnIndex >= characters.length) currentTurnIndex = 0;
+      render();
+    }
+
+    function adjustHp(index, amount) {
+      characters[index].currentHp += amount;
+      render();
+    }
+
+    function updateHp(index, inputId) {
+      const amount = parseInt(document.getElementById(inputId).value);
+      if (!isNaN(amount)) {
+        adjustHp(index, amount);
+        document.getElementById(inputId).value = '';
+      }
+    }
+
+    function toggleStatus(index, status) {
+      const statuses = characters[index].status;
+      const i = statuses.indexOf(status);
+      if (i > -1) {
+        statuses.splice(i, 1);
+      } else {
+        statuses.push(status);
+      }
+      render();
+    }
+
+    function rollInitiative() {
+      const diceType = parseInt(getValue('diceType'));
+      characters.forEach(char => {
+        char.initiative = Math.floor(Math.random() * diceType) + 1 + char.initiativeBonus;
+      });
+      characters.sort((a, b) => b.initiative - a.initiative);
+      currentTurnIndex = 0;
+      turnCount = 0;
+      render();
+    }
+
+    function nextTurn() {
+      currentTurnIndex = (currentTurnIndex + 1) % characters.length;
+      if (currentTurnIndex === 0) {
+        turnCount++;
+        rollInitiative();
+      }
+      render();
+    }
+
+    function resetCombat() {
+      characters.forEach(c => {
+        c.currentHp = c.maxHp;
+        c.initiative = null;
+        c.status = [];
+      });
+      currentTurnIndex = 0;
+      turnCount = 0;
+      render();
+    }
+
+    function render() {
+      const turnInfo = document.getElementById('turnInfo');
+      turnInfo.textContent = `Turno actual: ${turnCount + 1} | Personaje activo: ${characters[currentTurnIndex]?.name || '–'}`;
+
+      const container = document.getElementById('characters');
+      container.innerHTML = '';
+      characters.forEach((char, index) => {
+        const div = document.createElement('div');
+        div.className = `character-card ${char.type} ${index === currentTurnIndex ? 'active' : ''}`;
+
+        const hpPercent = (char.currentHp / char.maxHp) * 100;
+
+        div.innerHTML = `
+          <strong>${char.name}</strong>
+          <button class="small-delete" onclick="removeCharacter(${index})">❌</button><br>
+          ❤️ ${char.currentHp}/${char.maxHp}
+          <input id="hpChange${index}" type="number" placeholder="±HP" style="width:60px" />
+          <button onclick="updateHp(${index}, 'hpChange${index}')">Aplicar</button>
+          <div class="hp-bar"><div class="hp-fill" style="width:${hpPercent}%"></div></div>
+          <div class="compact-row">
+            🛡️ CA: ${char.ac} |
+            ⚡ Ini: ${char.initiative ?? '–'} |
+            <div class="status-control">
+              <label for="statusSelect${index}">Estado:</label>
+              <select id="statusSelect${index}" onchange="toggleStatus(${index}, this.value)">
+                <option value="">--</option>
+                ${STATUS_EFFECTS.map(s => `<option value="${s}" ${char.status.includes(s) ? 'disabled' : ''}>${s}</option>`).join('')}
+              </select>
+              <span>${char.status.join(', ')}</span>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(div);
       });
     }
   </script>
-</head>
-<body>
-  <h1>Iniciativa RPG App</h1>
-  <p>Esta es una versión demo. Inserta aquí tu app principal.</p>
 </body>
 </html>
